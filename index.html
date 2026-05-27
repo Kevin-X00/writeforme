@@ -86,8 +86,11 @@ textarea::placeholder{color:#6b5a4e;opacity:.6}
 <script>
 var scene='auto', style='formal';
 var recog=null, listening=false;
+var voiceBtn, voiceStatus;
 
 document.addEventListener('DOMContentLoaded',function(){
+  voiceBtn=document.getElementById('vbtn');
+  voiceStatus=document.getElementById('vstatus');
   var k=localStorage.getItem('wf_key');
   if(k) document.getElementById('apikey').value=k;
   document.getElementById('apikey').onchange=function(){
@@ -105,7 +108,7 @@ document.addEventListener('DOMContentLoaded',function(){
       this.classList.add('on'); style=this.dataset.v;
     };
   });
-  document.getElementById('vbtn').onclick=toggleVoice;
+  voiceBtn.onclick=toggleVoice;
 });
 
 function toast(msg){
@@ -116,77 +119,127 @@ function toast(msg){
 }
 
 function toggleVoice(){
-  if(listening) stopVoice();
-  else startVoice();
+  if(listening){stopVoice();return;}
+  startVoice();
 }
 
 function startVoice(){
   if(listening) return;
   var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-  if(!SR){toast('⚠ 浏览器不支持语音'); return;}
-  var st=document.getElementById('vstatus');
-  var btn=document.getElementById('vbtn');
-  st.textContent='⏳ 请求麦克风…';
-  btn.disabled=true;
-  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
-    st.textContent='❌ 不支持'; btn.disabled=false; return;
+  if(!SR){toast('⚠ 此浏览器不支持语音'); return;}
+
+  voiceBtn.disabled=true;
+  voiceStatus.textContent='⏳ 请求麦克风…';
+  voiceBtn.innerHTML='⏳ 请求中';
+
+  // Reset previous session
+  if(recog){try{recog.abort()}catch(e){}recog=null;}
+
+  // Request mic permission (with fallback for older browsers)
+  function requestMic(callback){
+    if(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia){
+      navigator.mediaDevices.getUserMedia({audio:true})
+        .then(function(stream){
+          stream.getTracks().forEach(function(t){t.stop()});
+          callback(true);
+        }).catch(function(){callback(false);});
+    } else if(navigator.getUserMedia){
+      navigator.getUserMedia({audio:true},function(stream){
+        stream.getTracks().forEach(function(t){t.stop()});
+        callback(true);
+      },function(){callback(false);});
+    } else {
+      // Some browsers don't need explicit mic request
+      callback(true);
+    }
   }
-  navigator.mediaDevices.getUserMedia({audio:true})
-  .then(function(stream){
-    stream.getTracks().forEach(function(t){t.stop()});
+
+  requestMic(function(granted){
+    if(!granted){
+      voiceStatus.textContent='❌ 麦克风被拒绝';
+      voiceBtn.innerHTML='🎤 语音输入';
+      voiceBtn.disabled=false;
+      return;
+    }
+
     var r=new SR();
-    r.continuous=true; r.interimResults=true; r.lang='zh-CN';
+    r.continuous=true;
+    r.interimResults=true;
+    // Quark/UC may need explicit lang
+    r.lang='zh-CN';
+
     r.onstart=function(){
       listening=true;
-      btn.classList.add('rec'); btn.innerHTML='🛑 停止';
-      st.textContent='🎤 说话中…';
+      voiceBtn.className='vbtn rec';
+      voiceBtn.innerHTML='🛑 停止';
+      voiceStatus.textContent='🎤 请说话…';
     };
+
     r.onresult=function(e){
+      var final='';
+      var interim='';
       var inp=document.getElementById('input');
-      var final='', interim='';
       for(var i=e.resultIndex;i<e.results.length;i++){
-        if(e.results[i].isFinal) final+=e.results[i][0].transcript;
-        else interim+=e.results[i][0].transcript;
+        if(e.results[i].isFinal){
+          final+=e.results[i][0].transcript;
+        } else {
+          interim=e.results[i][0].transcript;
+        }
       }
       if(final){
         inp.value+=final;
-        inp.style.height='auto'; inp.style.height=Math.min(inp.scrollHeight,160)+'px';
-        inp.placeholder='';
-      }else if(interim){
-        inp.placeholder=interim;
+        inp.style.height='auto';
+        inp.style.height=Math.min(inp.scrollHeight,160)+'px';
+      }
+      if(interim){
+        // Show interim as placeholder so user sees it live
+        inp.placeholder=inp.value+interim;
       }
     };
+
     r.onerror=function(e){
+      // Ignore these expected events
       if(e.error==='aborted'||e.error==='no-speech') return;
-      st.textContent='⚠ '+e.error;
-      listening=false; btn.classList.remove('rec');
-      btn.innerHTML='🎤 语音输入'; btn.disabled=false;
+      voiceStatus.textContent='⚠ 语音错误: '+e.error;
+      resetVoiceUI();
     };
+
     r.onend=function(){
-      if(listening){try{r.start()}catch(e2){}}
-      else{
-        btn.classList.remove('rec'); btn.innerHTML='🎤 语音输入';
-        btn.disabled=false;
-        st.textContent=document.getElementById('input').value?'✅ 已识别':'点击🎤开始';
+      if(listening){
+        // Auto-restart for continuous dictation
+        try{r.start()}catch(e2){}
+      } else {
+        resetVoiceUI();
       }
     };
+
     recog=r;
-    try{r.start()}catch(e){st.textContent='❌ 启动失败';btn.disabled=false;}
-  })
-  .catch(function(){st.textContent='❌ 麦克风被拒';btn.disabled=false;});
+    try{r.start()}catch(e){
+      voiceStatus.textContent='❌ 启动失败: '+e.message;
+      resetVoiceUI();
+    }
+  });
 }
 
 function stopVoice(){
   listening=false;
   if(recog){
+    // Use abort() for immediate stop, stop() as fallback
     try{recog.abort()}catch(e){}
     try{recog.stop()}catch(e){}
+    recog=null;
   }
-  setTimeout(function(){
-    var btn=document.getElementById('vbtn');
-    btn.classList.remove('rec'); btn.innerHTML='🎤 语音输入'; btn.disabled=false;
-    document.getElementById('vstatus').textContent=document.getElementById('input').value?'✅ 已识别':'点击🎤开始';
-  },800);
+  // Force UI reset after timeout (in case onend doesn't fire)
+  setTimeout(resetVoiceUI,500);
+}
+
+function resetVoiceUI(){
+  voiceBtn.className='vbtn';
+  voiceBtn.innerHTML='🎤 语音输入';
+  voiceBtn.disabled=false;
+  var inp=document.getElementById('input');
+  if(inp.value){voiceStatus.textContent='✅ 已识别 '+inp.value.length+' 字';}
+  else{voiceStatus.textContent='点击🎤开始说话';}
 }
 
 function doGen(){
