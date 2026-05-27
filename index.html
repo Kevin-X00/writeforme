@@ -110,6 +110,10 @@ body {
   0%, 100% { box-shadow: 0 0 0 0 rgba(226,85,85,0.4); }
   50% { box-shadow: 0 0 0 12px rgba(226,85,85,0); }
 }
+@keyframes blink {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0; }
+}
 .voice-btn:disabled { opacity: 0.4; }
 .voice-status {
   font-size: 13px; color: var(--text-light); flex: 1;
@@ -314,6 +318,7 @@ const state = {
   recognition: null,
   isRecording: false,
   finalTranscript: '',
+  interimTranscript: '',
   currentLang: 'unknown',
 };
 const SCENE_NAMES = { auto:'自动', leave:'请假条', resign:'辞职信', love:'情书/卡片', notice:'通知', apology:'道歉信', note:'笔记整理' };
@@ -337,10 +342,14 @@ function initSpeech() {
   r.onstart = () => {
     state.isRecording = true;
     state.finalTranscript = '';
+    state.interimTranscript = '';
     const btn = document.getElementById('voiceBtn');
-    if (btn) { btn.classList.add('recording'); btn.innerHTML = '<span>🔴</span> <span>点击停止</span>'; }
+    if (btn) { btn.classList.add('recording'); btn.innerHTML = '<span>🛑</span> <span>点击停止</span>'; }
     const st = document.getElementById('voiceStatus');
-    if (st) st.textContent = '🎤 录音中…';
+    if (st) st.textContent = '🎤 录音中… 说话即显示';
+    // Clear the input when starting fresh
+    const inp = document.getElementById('input');
+    if (inp && !inp.value.trim()) inp.value = '';
   };
 
   r.onresult = (e) => {
@@ -351,30 +360,54 @@ function initSpeech() {
     }
     if (final) {
       state.finalTranscript += final;
-      detectLanguage(state.finalTranscript);
-      const inp = document.getElementById('input');
-      if (inp) {
-        inp.value = state.finalTranscript;
-        inp.style.height = 'auto';
-        inp.style.height = Math.min(inp.scrollHeight, 160) + 'px';
-        localStorage.setItem('wf_last_input', state.finalTranscript);
-      }
+      state.interimTranscript = '';
     }
-    updateTranscript(state.finalTranscript + (interim ? '…' : ''), !!interim);
+    if (interim) {
+      state.interimTranscript = interim;
+    }
+
+    // REAL-TIME: Show both final + interim in the input box as user speaks
+    const displayText = state.finalTranscript + state.interimTranscript;
+    const inp = document.getElementById('input');
+    if (inp) {
+      inp.value = displayText;
+      inp.style.height = 'auto';
+      inp.style.height = Math.min(inp.scrollHeight, 160) + 'px';
+      localStorage.setItem('wf_last_input', displayText);
+    }
+
+    // Auto-detect language from completed words
+    if (state.finalTranscript) detectLanguage(state.finalTranscript);
+
+    // Update transcript preview box
+    updateTranscript(
+      state.finalTranscript + (state.interimTranscript ? state.interimTranscript : ''),
+      !!state.interimTranscript
+    );
   };
 
   r.onerror = (e) => {
+    if (e.error === 'aborted') return; // user stopped, clean
     const st = document.getElementById('voiceStatus');
     if (!st) return;
-    if (e.error === 'not-allowed' || e.error === 'permission-denied') { st.textContent = '❌ 麦克风权限被拒绝'; showToast('请允许麦克风权限后重试'); }
-    else if (e.error === 'no-speech') st.textContent = '没有检测到语音';
-    else if (e.error === 'aborted') { /* user stopped, ignore */ }
-    else st.textContent = '⚠ ' + e.error;
+    if (e.error === 'not-allowed' || e.error === 'permission-denied') {
+      st.textContent = '❌ 麦克风权限被拒绝';
+      showToast('请允许麦克风权限后重试');
+    } else if (e.error === 'no-speech') {
+      st.textContent = '没有检测到语音，请重试';
+    } else {
+      st.textContent = '⚠ ' + e.error;
+    }
+    if (state.isRecording) stopRecording();
   };
 
   r.onend = () => {
-    if (state.isRecording) { try { r.start(); } catch(e) {} }
-    else updateVoiceUI(false);
+    // Only restart if still in recording state AND there was speech recently
+    if (state.isRecording) {
+      try { r.start(); } catch(e) { /* browser might have closed the connection */ }
+    } else {
+      updateVoiceUI(false);
+    }
   };
 
   state.recognition = r;
@@ -426,13 +459,16 @@ function updateTranscript(text, isInterim) {
 
   if (text.trim()) {
     box.classList.add('show');
-    textEl.textContent = text;
-    langEl.textContent = state.currentLang === 'en-US' ? 'English' : '中文';
     if (isInterim) {
-      textEl.innerHTML = text.replace(/\.\.\.$/, '<span style="opacity:0.5;animation:blink 1s infinite">...</span>');
+      // Show interim text with a subtle cursor blink effect
+      textEl.innerHTML = text + '<span style="opacity:0.4;animation:blink 0.6s infinite">|</span>';
+    } else {
+      textEl.textContent = text;
     }
+    langEl.textContent = state.currentLang === 'en-US' ? 'English' : '中文';
   } else {
     box.classList.remove('show');
+    textEl.textContent = '';
   }
 }
 
@@ -460,6 +496,7 @@ function startRecording() {
   status.textContent = '⏳ 请求麦克风…';
 
   state.finalTranscript = '';
+  state.interimTranscript = '';
   state.currentLang = 'unknown';
   clearTranscript();
 
