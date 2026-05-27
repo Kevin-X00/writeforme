@@ -10,7 +10,6 @@
 <link rel="manifest" href="/manifest.json">
 <link rel="preconnect" href="https://api.openai.com">
 <style>
-/* ── Base ───────────────────────────────────────────────── */
 :root {
   --bg: #faf6f0;
   --card: #fffdf9;
@@ -22,6 +21,7 @@
   --shadow: rgba(44,24,16,0.08);
   --radius: 14px;
   --ink: #1a0f0a;
+  --recording: #e25555;
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 body {
@@ -32,21 +32,15 @@ body {
 }
 .container { max-width: 520px; margin: 0 auto; padding: 16px; }
 
-/* ── Header ─────────────────────────────────────────────── */
+/* Header */
 .header {
   display: flex; align-items: center; gap: 10px;
   padding: 12px 0 8px;
 }
-.header h1 {
-  font-size: 20px; font-weight: 600; margin: 0;
-  letter-spacing: 1px;
-}
-.header .badge {
-  font-size: 11px; background: var(--accent); color: #fff;
-  padding: 2px 8px; border-radius: 10px; font-weight: 500;
-}
+.header h1 { font-size: 20px; font-weight: 600; margin: 0; letter-spacing: 1px; }
+.header .badge { font-size: 11px; background: var(--accent); color: #fff; padding: 2px 8px; border-radius: 10px; font-weight: 500; }
 
-/* ── Input Area ─────────────────────────────────────────── */
+/* Input */
 .input-card {
   background: var(--card); border-radius: var(--radius);
   padding: 16px; margin: 12px 0;
@@ -60,7 +54,7 @@ body {
 }
 .input-card textarea::placeholder { color: var(--text-light); opacity: 0.6; }
 
-/* ── Scene & Style Pills ────────────────────────────────── */
+/* Pills */
 .pills { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
 .pill {
   padding: 6px 14px; border-radius: 20px;
@@ -71,7 +65,7 @@ body {
 .pill:active { transform: scale(0.96); }
 .pill.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 
-/* ── API Key Row ────────────────────────────────────────── */
+/* API Key */
 .api-row {
   display: flex; align-items: center; gap: 8px;
   margin: 8px 0; font-size: 13px; color: var(--text-light);
@@ -83,7 +77,67 @@ body {
 }
 .api-row input:focus { border-color: var(--accent); }
 
-/* ── Generate Button ────────────────────────────────────── */
+/* Lang indicator */
+.lang-indicator {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 12px; color: var(--text-light); padding: 4px 0;
+}
+.lang-indicator .dot {
+  width: 8px; height: 8px; border-radius: 50%; display: inline-block;
+}
+.lang-indicator .dot.idle { background: #ccc; }
+.lang-indicator .dot.cn { background: #e25555; }
+.lang-indicator .dot.en { background: #3b82f6; }
+
+/* Voice Row */
+.voice-row {
+  display: flex; align-items: center; gap: 10px;
+  margin: 10px 0 8px;
+}
+.voice-btn {
+  display: flex; align-items: center; justify-content: center;
+  gap: 6px; padding: 12px 20px; border-radius: 30px;
+  border: 2px solid var(--accent); background: var(--card);
+  font-size: 15px; font-weight: 500; color: var(--accent);
+  cursor: pointer; transition: all 0.2s; flex-shrink: 0;
+}
+.voice-btn:active { transform: scale(0.96); }
+.voice-btn.recording {
+  background: var(--recording); color: #fff; border-color: var(--recording);
+  animation: pulse 1.5s infinite;
+}
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(226,85,85,0.4); }
+  50% { box-shadow: 0 0 0 12px rgba(226,85,85,0); }
+}
+.voice-btn:disabled { opacity: 0.4; }
+.voice-status {
+  font-size: 13px; color: var(--text-light); flex: 1;
+  min-height: 20px;
+}
+.voice-status.transcribing { color: var(--accent); font-weight: 500; }
+.voice-wave {
+  display: inline-block; width: 0; height: 16px;
+  background: var(--accent); border-radius: 8px;
+  margin-right: 4px; vertical-align: middle;
+  transition: width 0.15s;
+}
+.voice-wave.active { width: 16px; }
+
+/* Transcript preview */
+.transcript-box {
+  display: none; background: var(--bg); border-radius: 10px;
+  padding: 10px 14px; margin: 6px 0;
+  font-size: 14px; line-height: 1.5; color: var(--text-light);
+  border-left: 3px solid var(--accent); min-height: 20px;
+}
+.transcript-box.show { display: block; }
+.transcript-box .lang-tag {
+  display: inline-block; font-size: 10px; background: var(--accent);
+  color: #fff; padding: 1px 6px; border-radius: 4px; margin-right: 6px;
+}
+
+/* Generate button */
 .btn-gen {
   display: flex; align-items: center; justify-content: center;
   gap: 8px; width: 100%; padding: 14px;
@@ -97,21 +151,17 @@ body {
 .btn-gen:not(:disabled):active { opacity: 0.85; }
 .btn-gen.loading { pointer-events: none; }
 
-/* ── Result ─────────────────────────────────────────────── */
+/* Result */
 .result-card {
   background: var(--card); border-radius: var(--radius);
   padding: 20px; margin: 12px 0;
-  box-shadow: 0 2px 12px var(--shadow);
-  display: none;
+  box-shadow: 0 2px 12px var(--shadow); display: none;
 }
 .result-card.show { display: block; }
-
 .handwriting-paper {
   background: linear-gradient(180deg, transparent 95%, #e8ddd0 95%);
   background-size: 100% 32px;
-  padding: 8px 12px 12px;
-  min-height: 200px;
-  position: relative;
+  padding: 8px 12px 12px; min-height: 200px;
 }
 .handwriting-paper .handwriting {
   font-family: 'KaiTi', 'STKaiti', '楷体', serif;
@@ -119,22 +169,17 @@ body {
   color: var(--ink); white-space: pre-wrap; word-break: break-all;
   letter-spacing: 0.5px;
 }
-.handwriting-paper .handwriting::before {
-  content: attr(data-title);
-  display: block; font-size: 22px; font-weight: bold;
-  text-align: center; margin-bottom: 8px;
-}
 
-/* Print styles */
+/* Print */
 @media print {
   body { background: white; }
-  .header, .input-card, .api-row, .btn-gen, .toolbar { display: none !important; }
+  .header, .input-card, .api-row, .voice-row, .btn-gen, .toolbar, .history { display: none !important; }
   .result-card { display: block !important; box-shadow: none; border: none; padding: 0; }
   .handwriting-paper { background: none; padding: 0; }
   .handwriting-paper .handwriting { font-size: 20px; line-height: 40px; }
 }
 
-/* ── Toolbar ────────────────────────────────────────────── */
+/* Toolbar */
 .toolbar {
   display: flex; gap: 10px; margin: 8px 0;
 }
@@ -146,7 +191,7 @@ body {
 }
 .toolbar button:active { background: var(--border); }
 
-/* ── History ────────────────────────────────────────────── */
+/* History */
 .history { margin: 12px 0; }
 .history summary {
   font-size: 13px; color: var(--text-light);
@@ -160,14 +205,14 @@ body {
 .history-item .h-scene { color: var(--accent); font-size: 11px; }
 .history-item .h-preview { color: var(--text-light); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-/* ── Mobile Adjustments ─────────────────────────────────── */
+/* Mobile */
 @media (max-width: 400px) {
   .container { padding: 12px; }
   .input-card textarea { font-size: 15px; min-height: 70px; }
   .handwriting-paper .handwriting { font-size: 16px; line-height: 28px; }
 }
 
-/* ── Toast ──────────────────────────────────────────────── */
+/* Toast */
 .toast {
   position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
   background: rgba(0,0,0,0.8); color: #fff;
@@ -189,8 +234,29 @@ body {
 
 <!-- Input Card -->
 <div class="input-card">
-  <textarea id="input" placeholder="描述你想写的内容…&#10;例如：帮我写一封请假条，发烧请一天假" rows="3"></textarea>
+  <textarea id="input" placeholder="打字描述你想写的内容…&#10;或点击下方麦克风语音输入" rows="2"></textarea>
 
+  <!-- Voice Input Row -->
+  <div class="voice-row">
+    <button class="voice-btn" id="voiceBtn" onclick="toggleVoice()">
+      <span id="voiceIcon">🎤</span>
+      <span id="voiceLabel">语音输入</span>
+    </button>
+    <div class="voice-status" id="voiceStatus">
+      <span class="lang-indicator">
+        <span class="dot idle" id="langDot"></span>
+        <span id="langLabel">等待输入</span>
+      </span>
+    </div>
+  </div>
+
+  <!-- Live Transcript -->
+  <div class="transcript-box" id="transcriptBox">
+    <span class="lang-tag" id="transcriptLang">中文</span>
+    <span id="transcriptText"></span>
+  </div>
+
+  <!-- Scene & Style -->
   <div class="pills" id="scenes">
     <span class="pill active" data-scene="auto">🎯 自动判断</span>
     <span class="pill" data-scene="leave">📋 请假条</span>
@@ -200,7 +266,6 @@ body {
     <span class="pill" data-scene="apology">🙏 道歉信</span>
     <span class="pill" data-scene="note">📝 笔记整理</span>
   </div>
-
   <div class="pills" id="styles">
     <span class="pill active" data-style="formal">正式</span>
     <span class="pill" data-style="warm">亲切</span>
@@ -214,10 +279,10 @@ body {
   </div>
 </div>
 
-<!-- Generate Button -->
+<!-- Generate -->
 <button class="btn-gen" id="genBtn" onclick="generate()">✍ 生成手写文字</button>
 
-<!-- Result Card -->
+<!-- Result -->
 <div class="result-card" id="resultCard">
   <div class="handwriting-paper">
     <div class="handwriting" id="handwriting"></div>
@@ -232,7 +297,7 @@ body {
 
 <!-- History -->
 <details class="history">
-  <summary>📜 历史记录 ({{history.length}})</summary>
+  <summary id="historySummary">📜 历史记录</summary>
   <div id="historyList"></div>
 </details>
 
@@ -246,15 +311,235 @@ const state = {
   style: 'formal',
   history: JSON.parse(localStorage.getItem('wf_history') || '[]'),
   lastResult: null,
+  recognition: null,
+  isRecording: false,
+  finalTranscript: '',
+  currentLang: 'unknown',
 };
 const SCENE_NAMES = { auto:'自动', leave:'请假条', resign:'辞职信', love:'情书/卡片', notice:'通知', apology:'道歉信', note:'笔记整理' };
 const STYLE_NAMES = { formal:'正式', warm:'亲切', classic:'古风', short:'简短' };
+const LANG_NAMES = { 'cmn-Hans-CN':'中文', 'zh-CN':'中文', 'zh':'中文', 'en-US':'English', 'en':'English', 'ja-JP':'日本語', 'ko-KR':'한국어' };
+
+// ─── Voice Recognition ───────────────────────────────────────
+function initSpeech() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    document.getElementById('voiceBtn').disabled = true;
+    document.getElementById('voiceStatus').textContent = '❌ 浏览器不支持语音识别';
+    return false;
+  }
+
+  const recognition = new SpeechRecognition();
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  // Set broad language for auto-detection — the API picks the closest match
+  recognition.lang = 'zh-CN,en-US';  // Browser auto-detects or uses primary
+
+  recognition.onstart = () => {
+    state.isRecording = true;
+    state.finalTranscript = '';
+  };
+
+  recognition.onresult = (event) => {
+    let interim = '';
+    let final = '';
+
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      const result = event.results[i];
+      if (result.isFinal) {
+        final += result[0].transcript;
+      } else {
+        interim += result[0].transcript;
+      }
+    }
+
+    if (final) {
+      state.finalTranscript += final;
+      // Auto-detect language from the transcript
+      detectLanguage(state.finalTranscript);
+      document.getElementById('input').value = state.finalTranscript;
+    }
+
+    // Show interim in transcript box
+    const displayText = state.finalTranscript + (interim ? '...' : '');
+    updateTranscript(displayText, interim.length > 0);
+
+    // Auto-adjust textarea height
+    const ta = document.getElementById('input');
+    ta.style.height = 'auto';
+    ta.style.height = Math.min(ta.scrollHeight, 160) + 'px';
+  };
+
+  recognition.onerror = (event) => {
+    console.error('Speech error:', event.error);
+    stopRecording();
+    const status = document.getElementById('voiceStatus');
+    if (event.error === 'no-speech') {
+      status.textContent = '没有检测到语音，点击重新开始';
+    } else if (event.error === 'audio-capture') {
+      status.textContent = '❌ 无法访问麦克风，请授予权限';
+    } else if (event.error === 'not-allowed') {
+      status.textContent = '❌ 麦克风权限被拒绝';
+    } else if (event.error === 'language-not-supported') {
+      status.textContent = '⚠ 语言不支持，试试中文或英文';
+    } else {
+      status.textContent = '⚠ 语音识别错误: ' + event.error;
+    }
+  };
+
+  recognition.onend = () => {
+    // Auto-restart if still recording (handles silent pauses)
+    if (state.isRecording) {
+      try { recognition.start(); } catch(e) {}
+    } else {
+      updateVoiceUI(false);
+    }
+  };
+
+  state.recognition = recognition;
+  return true;
+}
+
+function detectLanguage(text) {
+  const cleaned = text.trim();
+  if (!cleaned) return;
+
+  // Count Chinese characters vs Latin letters
+  const cnChars = (cleaned.match(/[\u4e00-\u9fff\u3400-\u4dbf]/g) || []).length;
+  const enChars = (cleaned.match(/[a-zA-Z]/g) || []).length;
+  const total = cnChars + enChars;
+  if (total === 0) return;
+
+  const cnRatio = cnChars / total;
+  let detected;
+  if (cnRatio > 0.3) detected = 'zh-CN';
+  else if (enChars > 0) detected = 'en-US';
+  else detected = 'unknown';
+
+  if (detected !== state.currentLang) {
+    state.currentLang = detected;
+    updateLangIndicator(detected);
+  }
+}
+
+function updateLangIndicator(lang) {
+  const dot = document.getElementById('langDot');
+  const label = document.getElementById('langLabel');
+  dot.className = 'dot';
+  if (lang === 'zh-CN') {
+    dot.classList.add('cn');
+    label.textContent = '中文';
+  } else if (lang === 'en-US') {
+    dot.classList.add('en');
+    label.textContent = 'English';
+  } else {
+    dot.classList.add('idle');
+    label.textContent = '检测中...';
+  }
+}
+
+function updateTranscript(text, isInterim) {
+  const box = document.getElementById('transcriptBox');
+  const textEl = document.getElementById('transcriptText');
+  const langEl = document.getElementById('transcriptLang');
+
+  if (text.trim()) {
+    box.classList.add('show');
+    textEl.textContent = text;
+    langEl.textContent = state.currentLang === 'en-US' ? 'English' : '中文';
+    if (isInterim) {
+      textEl.innerHTML = text.replace(/\.\.\.$/, '<span style="opacity:0.5;animation:blink 1s infinite">...</span>');
+    }
+  } else {
+    box.classList.remove('show');
+  }
+}
+
+function clearTranscript() {
+  document.getElementById('transcriptBox').classList.remove('show');
+  document.getElementById('transcriptText').textContent = '';
+}
+
+// ─── Voice Toggle ────────────────────────────────────────────
+function toggleVoice() {
+  if (state.isRecording) {
+    stopRecording();
+  } else {
+    startRecording();
+  }
+}
+
+function startRecording() {
+  if (!state.recognition && !initSpeech()) return;
+  if (!state.recognition) return;
+
+  // Request mic permission early
+  navigator.mediaDevices?.getUserMedia?.({ audio: true }).then(() => {
+    state.isRecording = true;
+    state.finalTranscript = '';
+    state.currentLang = 'unknown';
+
+    const btn = document.getElementById('voiceBtn');
+    btn.classList.add('recording');
+    document.getElementById('voiceIcon').textContent = '🔴';
+    document.getElementById('voiceLabel').textContent = '停止录音';
+
+    const status = document.getElementById('voiceStatus');
+    status.innerHTML = '🎤 录音中… 说话后自动识别语言';
+
+    clearTranscript();
+
+    // For language auto-detection, restart with appropriate primary lang
+    // but we keep broad for auto-detection
+    try {
+      state.recognition.start();
+    } catch(e) {
+      // May already be running
+    }
+  }).catch(() => {
+    showToast('❌ 需要麦克风权限才能使用语音输入');
+  });
+}
+
+function stopRecording() {
+  state.isRecording = false;
+  updateVoiceUI(false);
+
+  if (state.recognition) {
+    try { state.recognition.stop(); } catch(e) {}
+  }
+}
+
+function updateVoiceUI(isRecording) {
+  const btn = document.getElementById('voiceBtn');
+  btn.classList.remove('recording');
+  document.getElementById('voiceIcon').textContent = '🎤';
+  document.getElementById('voiceLabel').textContent = '语音输入';
+
+  if (!isRecording) {
+    const status = document.getElementById('voiceStatus');
+    if (state.finalTranscript) {
+      status.innerHTML = `✅ 已识别 ${state.currentLang === 'en-US' ? 'English' : '中文'}，${state.finalTranscript.length} 字`;
+      status.innerHTML += ' · <span style="color:var(--accent);cursor:pointer" onclick="generate()">立即生成</span>';
+    } else {
+      status.innerHTML = '<span class="lang-indicator"><span class="dot idle"></span>点击🎤开始说话</span>';
+    }
+  }
+}
 
 // ─── Init ────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-  // Restore API key
   const saved = localStorage.getItem('wf_apikey');
   if (saved) document.getElementById('apikey').value = saved;
+
+  // Auto-restore last input
+  const last = localStorage.getItem('wf_last_input');
+  if (last) { document.getElementById('input').value = last; }
+
+  // Save input on change
+  document.getElementById('input').addEventListener('input', () => {
+    localStorage.setItem('wf_last_input', document.getElementById('input').value);
+  });
 
   // Scene pills
   document.querySelectorAll('#scenes .pill').forEach(el => {
@@ -275,21 +560,14 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   renderHistory();
+  initSpeech();
 
-  // PWA install
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js').catch(() => {});
   }
-
-  // Enter key in textarea doesn't submit (allow multiline)
-  document.getElementById('input').addEventListener('keydown', e => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      // Allow Enter for newline in textarea
-    }
-  });
 });
 
-// ─── Save API Key ────────────────────────────────────────────
+// ─── API Key ────────────────────────────────────────────────
 function saveKey() {
   const key = document.getElementById('apikey').value.trim();
   if (key) localStorage.setItem('wf_apikey', key);
@@ -298,54 +576,59 @@ function saveKey() {
 // ─── Generate ────────────────────────────────────────────────
 async function generate() {
   const input = document.getElementById('input').value.trim();
-  if (!input) { showToast('请先描述你要写的内容'); return; }
+  if (!input) { showToast('请先描述你要写的内容（打字或语音）'); return; }
 
   const apiKey = document.getElementById('apikey').value.trim();
   if (!apiKey) { showToast('请填写 OpenAi API Key'); return; }
-
   saveKey();
+
+  // Stop voice if recording
+  if (state.isRecording) stopRecording();
 
   const btn = document.getElementById('genBtn');
   btn.disabled = true; btn.classList.add('loading');
   btn.innerHTML = '⏳ 正在生成…';
 
   try {
-    const systemPrompt = `你是一个专业的书面文字生成助手。用户会描述他们需要手写什么场景的文字，你负责生成可以直接手写或打印的正式文本。
+    // Detect the language of the input to respond accordingly
+    const cnChars = (input.match(/[\u4e00-\u9fff\u3400-\u4dbf]/g) || []).length;
+    const enChars = (input.match(/[a-zA-Z]/g) || []).length;
+    const isChinese = cnChars >= enChars;
 
-当前场景: ${SCENE_NAMES[state.scene]}
-语气风格: ${STYLE_NAMES[state.style]}
+    const outputLang = isChinese ? '中文' : state.currentLang === 'en-US' ? 'English' : '中文';
+    const instructionLang = isChinese ?
+      '生成中文书面文字。包含标题、称呼、正文、落款。日期用X月X日，签名用______。每段空一行。' :
+      'Generate formal written text in English. Include title, salutation, body, closing. Use "X/X/XXXX" for dates and "______" for signatures.';
 
-要求：
-1. 生成完整的书面文字，包含必要的格式要素（标题、称呼、正文、落款等）
-2. 使用中文，语言正式得体
-3. 不要包含解释说明，只输出文字本身
-4. 落款处用 ______ 表示需要用户手写签名
-5. 日期用 X月X日 表示，用户可自行填写
-6. 每段之间空一行
-7. 标题单独一行居中`;
+    const systemPrompt = `You are a professional written text generator. Users describe what they need to write, and you generate polished text ready for handwriting or printing.
 
-    const userPrompt = `用户描述：${input}`;
+Current scenario: ${SCENE_NAMES[state.scene]}
+Output style: ${STYLE_NAMES[state.style]}
+Output language: ${outputLang}
 
-    const body = {
-      model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-      temperature: 0.5,
-      max_tokens: 2000,
-    };
+Requirements:
+1. Output format: ${instructionLang}
+2. Do NOT include explanations or markdown formatting
+3. Output ONLY the text itself
+4. If a title fits, include it centered`;
+
+    const userPrompt = `User request: ${input}`;
 
     const res = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
-      body: JSON.stringify(body),
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ],
+        temperature: 0.5,
+        max_tokens: 2000,
+      }),
     });
 
-    if (!res.ok) {
-      const err = await res.text();
-      throw new Error(err.slice(0, 200));
-    }
+    if (!res.ok) throw new Error((await res.text()).slice(0, 200));
 
     const data = await res.json();
     const text = data.choices?.[0]?.message?.content || '';
@@ -353,53 +636,40 @@ async function generate() {
     state.lastResult = { input, scene: state.scene, style: state.style, text, time: Date.now() };
     showResult(text);
 
-    // Save to history
-    state.history.unshift({ input, scene: state.scene, style: state.style, text: text.slice(0, 60), time: Date.now() });
+    state.history.unshift({ input: input.slice(0, 60), scene: state.scene, style: state.style, text: text.slice(0, 60), time: Date.now() });
     if (state.history.length > 20) state.history.length = 20;
     localStorage.setItem('wf_history', JSON.stringify(state.history));
     renderHistory();
 
   } catch (e) {
-    showToast('❌ 生成失败: ' + e.message);
+    showToast('❌ ' + e.message);
   } finally {
     btn.disabled = false; btn.classList.remove('loading');
     btn.innerHTML = '✍ 生成手写文字';
   }
 }
 
-// ─── Show Result ────────────────────────────────────────────
+// ─── Result Display ─────────────────────────────────────────
 function showResult(text) {
   const card = document.getElementById('resultCard');
   const el = document.getElementById('handwriting');
   el.textContent = text;
-  // Remove data-title if any
-  el.removeAttribute('data-title');
-  // Try to extract title from first line
   const lines = text.trim().split('\n');
-  if (lines.length > 0 && lines[0].length < 20) {
-    // First line might be a title
-    el.innerHTML = '<div style="text-align:center;font-size:22px;font-weight:bold;margin-bottom:8px">' + lines[0] + '</div>' + lines.slice(1).join('\n');
+  if (lines.length > 0 && lines[0].length < 30) {
+    el.innerHTML = '<div style="text-align:center;font-size:22px;font-weight:bold;margin-bottom:8px">' + lines[0].replace(/^#\s*/, '') + '</div>' + lines.slice(1).join('\n');
   }
   card.classList.add('show');
-  // Scroll to result
   setTimeout(() => card.scrollIntoView({ behavior: 'smooth', block: 'start' }), 200);
 }
 
-// ─── Toolbar Actions ────────────────────────────────────────
-function printResult() {
-  window.print();
-}
+function printResult() { window.print(); }
 
 function copyResult() {
   if (!state.lastResult) return;
-  navigator.clipboard.writeText(state.lastResult.text).then(() => {
-    showToast('✅ 已复制到剪贴板');
-  }).catch(() => {
-    // Fallback
+  navigator.clipboard.writeText(state.lastResult.text).then(() => showToast('✅ 已复制')).catch(() => {
     const ta = document.createElement('textarea');
     ta.value = state.lastResult.text;
-    document.body.appendChild(ta);
-    ta.select();
+    document.body.appendChild(ta); ta.select();
     document.execCommand('copy');
     document.body.removeChild(ta);
     showToast('✅ 已复制');
@@ -412,19 +682,18 @@ function saveResult() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `手写文字_${new Date().toISOString().slice(0,10)}.txt`;
+  a.download = `writeforme_${new Date().toISOString().slice(0,10)}.txt`;
   a.click();
   URL.revokeObjectURL(url);
-  showToast('✅ 已保存到下载文件夹');
+  showToast('✅ 已保存');
 }
 
-function regenerate() {
-  generate();
-}
+function regenerate() { generate(); }
 
 // ─── History ────────────────────────────────────────────────
 function renderHistory() {
   const el = document.getElementById('historyList');
+  document.getElementById('historySummary').textContent = `📜 历史记录 (${state.history.length})`;
   if (state.history.length === 0) {
     el.innerHTML = '<div style="padding:12px;color:var(--text-light);font-size:13px">暂无记录</div>';
     return;
@@ -444,15 +713,13 @@ function restoreHistory(idx) {
   const h = state.history[idx];
   if (!h) return;
   document.getElementById('input').value = h.input;
-  // Set scene
+  localStorage.setItem('wf_last_input', h.input);
   document.querySelectorAll('#scenes .pill').forEach(p => p.classList.remove('active'));
   const sEl = document.querySelector(`#scenes .pill[data-scene="${h.scene}"]`);
   if (sEl) { sEl.classList.add('active'); state.scene = h.scene; }
-  // Set style
   document.querySelectorAll('#styles .pill').forEach(p => p.classList.remove('active'));
   const stEl = document.querySelector(`#styles .pill[data-style="${h.style}"]`);
   if (stEl) { stEl.classList.add('active'); state.style = h.style; }
-  // Show
   if (h.text) showResult(h.text);
   state.lastResult = h;
 }
