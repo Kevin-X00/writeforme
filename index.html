@@ -419,6 +419,34 @@ function initSpeech() {
   return true;
 }
 
+function detectLanguage(text) {
+  const cleaned = text.trim();
+  if (!cleaned) return;
+  const cnChars = (cleaned.match(/[\u4e00-\u9fff\u3400-\u4dbf]/g) || []).length;
+  const enChars = (cleaned.match(/[a-zA-Z]/g) || []).length;
+  const total = cnChars + enChars;
+  if (total === 0) return;
+  const cnRatio = cnChars / total;
+  let detected;
+  if (cnRatio > 0.3) detected = 'zh-CN';
+  else if (enChars > 0) detected = 'en-US';
+  else detected = 'unknown';
+  if (detected !== state.currentLang) {
+    state.currentLang = detected;
+    updateLangIndicator(detected);
+  }
+}
+
+function updateLangIndicator(lang) {
+  const dot = document.getElementById('langDot');
+  const label = document.getElementById('langLabel');
+  if (!dot || !label) return;
+  dot.className = 'dot';
+  if (lang === 'zh-CN') { dot.classList.add('cn'); label.textContent = '中文'; }
+  else if (lang === 'en-US') { dot.classList.add('en'); label.textContent = 'English'; }
+  else { dot.classList.add('idle'); label.textContent = '检测中...'; }
+}
+
 function setBtn(mode, label) {
   const btn = document.getElementById('voiceBtn');
   if (!btn) return;
@@ -505,20 +533,6 @@ function showVoiceReady() {
     status.innerHTML = `✅ 已识别 ${langLabel}，${state.finalTranscript.length} 字 · <span style="color:var(--accent);cursor:pointer" onclick="generate()">立即生成</span>`;
   } else {
     status.innerHTML = '<span class="lang-indicator"><span class="dot idle"></span>点击🎤开始说话</span>';
-  }
-}
-  const dot = document.getElementById('langDot');
-  const label = document.getElementById('langLabel');
-  dot.className = 'dot';
-  if (lang === 'zh-CN') {
-    dot.classList.add('cn');
-    label.textContent = '中文';
-  } else if (lang === 'en-US') {
-    dot.classList.add('en');
-    label.textContent = 'English';
-  } else {
-    dot.classList.add('idle');
-    label.textContent = '检测中...';
   }
 }
 
