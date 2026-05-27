@@ -4,766 +4,230 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="theme-color" content="#8b5e3c">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>WriteForMe · 手写助手</title>
 <link rel="manifest" href="/manifest.json">
-<link rel="preconnect" href="https://api.openai.com">
 <style>
-:root {
-  --bg: #faf6f0;
-  --card: #fffdf9;
-  --text: #2c1810;
-  --text-light: #6b5a4e;
-  --accent: #8b5e3c;
-  --accent-light: #a87b57;
-  --border: #d9cdc0;
-  --shadow: rgba(44,24,16,0.08);
-  --radius: 14px;
-  --ink: #1a0f0a;
-  --recording: #e25555;
-}
-* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-body {
-  margin: 0; padding: 0;
-  font-family: -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
-  background: var(--bg); color: var(--text);
-  min-height: 100dvh; padding-bottom: env(safe-area-inset-bottom);
-}
-.container { max-width: 520px; margin: 0 auto; padding: 16px; }
-
-/* Header */
-.header {
-  display: flex; align-items: center; gap: 10px;
-  padding: 12px 0 8px;
-}
-.header h1 { font-size: 20px; font-weight: 600; margin: 0; letter-spacing: 1px; }
-.header .badge { font-size: 11px; background: var(--accent); color: #fff; padding: 2px 8px; border-radius: 10px; font-weight: 500; }
-
-/* Input */
-.input-card {
-  background: var(--card); border-radius: var(--radius);
-  padding: 16px; margin: 12px 0;
-  box-shadow: 0 2px 12px var(--shadow);
-}
-.input-card textarea {
-  width: 100%; border: none; outline: none; resize: none;
-  font-size: 16px; line-height: 1.6;
-  background: transparent; color: var(--text);
-  min-height: 80px; font-family: inherit;
-}
-.input-card textarea::placeholder { color: var(--text-light); opacity: 0.6; }
-
-/* Pills */
-.pills { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
-.pill {
-  padding: 6px 14px; border-radius: 20px;
-  font-size: 13px; border: 1px solid var(--border);
-  background: var(--card); color: var(--text-light);
-  cursor: pointer; user-select: none; transition: all 0.2s;
-}
-.pill:active { transform: scale(0.96); }
-.pill.active { background: var(--accent); color: #fff; border-color: var(--accent); }
-
-/* API Key */
-.api-row {
-  display: flex; align-items: center; gap: 8px;
-  margin: 8px 0; font-size: 13px; color: var(--text-light);
-}
-.api-row input {
-  flex: 1; border: 1px solid var(--border); border-radius: 8px;
-  padding: 6px 10px; font-size: 13px; background: var(--card);
-  color: var(--text); outline: none; min-width: 0;
-}
-.api-row input:focus { border-color: var(--accent); }
-
-/* Lang indicator */
-.lang-indicator {
-  display: inline-flex; align-items: center; gap: 4px;
-  font-size: 12px; color: var(--text-light); padding: 4px 0;
-}
-.lang-indicator .dot {
-  width: 8px; height: 8px; border-radius: 50%; display: inline-block;
-}
-.lang-indicator .dot.idle { background: #ccc; }
-.lang-indicator .dot.cn { background: #e25555; }
-.lang-indicator .dot.en { background: #3b82f6; }
-
-/* Voice Row */
-.voice-row {
-  display: flex; align-items: center; gap: 10px;
-  margin: 10px 0 8px;
-}
-.voice-btn {
-  display: flex; align-items: center; justify-content: center;
-  gap: 6px; padding: 12px 20px; border-radius: 30px;
-  border: 2px solid var(--accent); background: var(--card);
-  font-size: 15px; font-weight: 500; color: var(--accent);
-  cursor: pointer; transition: all 0.2s; flex-shrink: 0;
-}
-.voice-btn:active { transform: scale(0.96); }
-.voice-btn.recording {
-  background: var(--recording); color: #fff; border-color: var(--recording);
-  animation: pulse 1.5s infinite;
-}
-@keyframes pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(226,85,85,0.4); }
-  50% { box-shadow: 0 0 0 12px rgba(226,85,85,0); }
-}
-@keyframes blink {
-  0%, 100% { opacity: 0.4; }
-  50% { opacity: 0; }
-}
-.voice-btn:disabled { opacity: 0.4; }
-.voice-status {
-  font-size: 13px; color: var(--text-light); flex: 1;
-  min-height: 20px;
-}
-.voice-status.transcribing { color: var(--accent); font-weight: 500; }
-.voice-wave {
-  display: inline-block; width: 0; height: 16px;
-  background: var(--accent); border-radius: 8px;
-  margin-right: 4px; vertical-align: middle;
-  transition: width 0.15s;
-}
-.voice-wave.active { width: 16px; }
-
-/* Transcript preview */
-.transcript-box {
-  display: none; background: var(--bg); border-radius: 10px;
-  padding: 10px 14px; margin: 6px 0;
-  font-size: 14px; line-height: 1.5; color: var(--text-light);
-  border-left: 3px solid var(--accent); min-height: 20px;
-}
-.transcript-box.show { display: block; }
-.transcript-box .lang-tag {
-  display: inline-block; font-size: 10px; background: var(--accent);
-  color: #fff; padding: 1px 6px; border-radius: 4px; margin-right: 6px;
-}
-
-/* Generate button */
-.btn-gen {
-  display: flex; align-items: center; justify-content: center;
-  gap: 8px; width: 100%; padding: 14px;
-  border: none; border-radius: var(--radius);
-  font-size: 16px; font-weight: 600;
-  background: var(--accent); color: #fff;
-  cursor: pointer; transition: opacity 0.2s;
-  margin: 8px 0;
-}
-.btn-gen:disabled { opacity: 0.5; }
-.btn-gen:not(:disabled):active { opacity: 0.85; }
-.btn-gen.loading { pointer-events: none; }
-
-/* Result */
-.result-card {
-  background: var(--card); border-radius: var(--radius);
-  padding: 20px; margin: 12px 0;
-  box-shadow: 0 2px 12px var(--shadow); display: none;
-}
-.result-card.show { display: block; }
-.handwriting-paper {
-  background: linear-gradient(180deg, transparent 95%, #e8ddd0 95%);
-  background-size: 100% 32px;
-  padding: 8px 12px 12px; min-height: 200px;
-}
-.handwriting-paper .handwriting {
-  font-family: 'KaiTi', 'STKaiti', '楷体', serif;
-  font-size: 18px; line-height: 32px;
-  color: var(--ink); white-space: pre-wrap; word-break: break-all;
-  letter-spacing: 0.5px;
-}
-
-/* Print */
-@media print {
-  body { background: white; }
-  .header, .input-card, .api-row, .voice-row, .btn-gen, .toolbar, .history { display: none !important; }
-  .result-card { display: block !important; box-shadow: none; border: none; padding: 0; }
-  .handwriting-paper { background: none; padding: 0; }
-  .handwriting-paper .handwriting { font-size: 20px; line-height: 40px; }
-}
-
-/* Toolbar */
-.toolbar {
-  display: flex; gap: 10px; margin: 8px 0;
-}
-.toolbar button {
-  flex: 1; padding: 10px; border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--card); color: var(--text);
-  font-size: 14px; cursor: pointer; transition: all 0.2s;
-}
-.toolbar button:active { background: var(--border); }
-
-/* History */
-.history { margin: 12px 0; }
-.history summary {
-  font-size: 13px; color: var(--text-light);
-  cursor: pointer; padding: 8px 0;
-}
-.history-item {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 8px 12px; border-bottom: 1px solid var(--border);
-  font-size: 13px; cursor: pointer;
-}
-.history-item .h-scene { color: var(--accent); font-size: 11px; }
-.history-item .h-preview { color: var(--text-light); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-/* Mobile */
-@media (max-width: 400px) {
-  .container { padding: 12px; }
-  .input-card textarea { font-size: 15px; min-height: 70px; }
-  .handwriting-paper .handwriting { font-size: 16px; line-height: 28px; }
-}
-
-/* Toast */
-.toast {
-  position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
-  background: rgba(0,0,0,0.8); color: #fff;
-  padding: 8px 20px; border-radius: 20px;
-  font-size: 14px; opacity: 0; transition: opacity 0.3s;
-  pointer-events: none; z-index: 100;
-}
-.toast.show { opacity: 1; }
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;padding:0;font-family:-apple-system,'PingFang SC','Microsoft YaHei',sans-serif;background:#faf6f0;color:#2c1810;min-height:100dvh}
+.wrap{max-width:520px;margin:0 auto;padding:16px}
+h1{font-size:20px;margin:8px 0 4px}
+.card{background:#fffdf9;border-radius:14px;padding:16px;margin:12px 0;box-shadow:0 2px 12px rgba(44,24,16,0.08)}
+textarea{width:100%;border:none;outline:none;resize:none;font-size:16px;line-height:1.6;min-height:70px;font-family:inherit;background:transparent;color:#2c1810}
+textarea::placeholder{color:#6b5a4e;opacity:.6}
+.row{display:flex;align-items:center;gap:10px;margin:10px 0}
+.vbtn{display:flex;align-items:center;gap:6px;padding:12px 22px;border-radius:30px;border:2px solid #8b5e3c;background:#fffdf9;font-size:15px;font-weight:500;color:#8b5e3c;cursor:pointer}
+.vbtn.rec{background:#e25555;color:#fff;border-color:#e25555;animation:pulse 1.5s infinite}
+.vbtn:disabled{opacity:.4}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(226,85,85,.4)}50%{box-shadow:0 0 0 12px rgba(226,85,85,0)}}
+.vstatus{font-size:13px;color:#6b5a4e;flex:1}
+.pills{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+.pill{padding:6px 14px;border-radius:20px;font-size:13px;border:1px solid #d9cdc0;background:#fffdf9;color:#6b5a4e;cursor:pointer}
+.pill.on{background:#8b5e3c;color:#fff;border-color:#8b5e3c}
+.apirow{display:flex;align-items:center;gap:8px;margin:8px 0;font-size:13px;color:#6b5a4e}
+.apirow input{flex:1;border:1px solid #d9cdc0;border-radius:8px;padding:6px 10px;font-size:13px;background:#fffdf9;color:#2c1810;outline:none}
+.genbtn{width:100%;padding:14px;border:none;border-radius:14px;font-size:16px;font-weight:600;background:#8b5e3c;color:#fff;cursor:pointer;margin:8px 0}
+.genbtn:disabled{opacity:.5}
+.result{display:none;background:#fffdf9;border-radius:14px;padding:20px;margin:12px 0;box-shadow:0 2px 12px rgba(44,24,16,0.08)}
+.result.show{display:block}
+.paper{background:linear-gradient(180deg,transparent 95%,#e8ddd0 95%);background-size:100% 32px;padding:8px 12px;min-height:200px}
+.hand{font-family:'KaiTi','STKaiti','楷体',serif;font-size:18px;line-height:32px;color:#1a0f0a;white-space:pre-wrap;word-break:break-all;letter-spacing:.5px}
+.tbar{display:flex;gap:10px;margin:8px 0}
+.tbar button{flex:1;padding:10px;border:1px solid #d9cdc0;border-radius:14px;background:#fffdf9;font-size:14px;cursor:pointer}
+@media print{body{background:#fff}.np{display:none!important}.result{display:block!important;box-shadow:none;padding:0}.hand{font-size:20px;line-height:40px}}
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.8);color:#fff;padding:8px 20px;border-radius:20px;font-size:14px;opacity:0;transition:opacity .3s;pointer-events:none;z-index:100}
+.toast.on{opacity:1}
 </style>
 </head>
 <body>
-<div class="container">
+<div class="wrap">
 
-<!-- Header -->
-<div class="header">
-  <h1>✍ WriteForMe</h1>
-  <span class="badge">手写助手</span>
+<h1>✍ WriteForMe</h1>
+
+<div class="card">
+<textarea id="input" rows="2" placeholder="打字描述…或点🎤语音输入"></textarea>
+
+<div class="row np">
+<button class="vbtn" id="vbtn">🎤 语音输入</button>
+<div class="vstatus" id="vstatus">点击🎤开始说话</div>
 </div>
 
-<!-- Input Card -->
-<div class="input-card">
-  <textarea id="input" placeholder="打字描述你想写的内容…&#10;或点击下方麦克风语音输入" rows="2"></textarea>
-
-  <!-- Voice Input Row -->
-  <div class="voice-row">
-    <button class="voice-btn" id="voiceBtn" onclick="toggleVoice()">
-      <span id="voiceIcon">🎤</span>
-      <span id="voiceLabel">语音输入</span>
-    </button>
-    <div class="voice-status" id="voiceStatus">
-      <span class="lang-indicator">
-        <span class="dot idle" id="langDot"></span>
-        <span id="langLabel">等待输入</span>
-      </span>
-    </div>
-  </div>
-
-  <!-- Live Transcript -->
-  <div class="transcript-box" id="transcriptBox">
-    <span class="lang-tag" id="transcriptLang">中文</span>
-    <span id="transcriptText"></span>
-  </div>
-
-  <!-- Scene & Style -->
-  <div class="pills" id="scenes">
-    <span class="pill active" data-scene="auto">🎯 自动判断</span>
-    <span class="pill" data-scene="leave">📋 请假条</span>
-    <span class="pill" data-scene="resign">📄 辞职信</span>
-    <span class="pill" data-scene="love">💌 情书/卡片</span>
-    <span class="pill" data-scene="notice">📢 通知</span>
-    <span class="pill" data-scene="apology">🙏 道歉信</span>
-    <span class="pill" data-scene="note">📝 笔记整理</span>
-  </div>
-  <div class="pills" id="styles">
-    <span class="pill active" data-style="formal">正式</span>
-    <span class="pill" data-style="warm">亲切</span>
-    <span class="pill" data-style="classic">古风</span>
-    <span class="pill" data-style="short">简短</span>
-  </div>
-
-  <div class="api-row">
-    <span>🔑</span>
-    <input type="password" id="apikey" placeholder="OpenAI API Key" autocomplete="off">
-  </div>
+<div class="pills np" id="scenes">
+<span class="pill on" data-v="auto">🎯 自动</span>
+<span class="pill" data-v="leave">📋 请假</span>
+<span class="pill" data-v="love">💌 情书</span>
+<span class="pill" data-v="notice">📢 通知</span>
+<span class="pill" data-v="note">📝 笔记</span>
+</div>
+<div class="pills np" id="styles">
+<span class="pill on" data-v="formal">正式</span>
+<span class="pill" data-v="warm">亲切</span>
+<span class="pill" data-v="classic">古风</span>
 </div>
 
-<!-- Generate -->
-<button class="btn-gen" id="genBtn" onclick="generate()">✍ 生成手写文字</button>
-
-<!-- Result -->
-<div class="result-card" id="resultCard">
-  <div class="handwriting-paper">
-    <div class="handwriting" id="handwriting"></div>
-  </div>
-  <div class="toolbar">
-    <button onclick="printResult()">🖨 打印</button>
-    <button onclick="copyResult()">📋 复制</button>
-    <button onclick="saveResult()">💾 保存</button>
-    <button onclick="regenerate()">🔄 重新生成</button>
-  </div>
+<div class="apirow np">
+<span>🔑</span>
+<input type="password" id="apikey" placeholder="OpenAI API Key" autocomplete="off">
+</div>
 </div>
 
-<!-- History -->
-<details class="history">
-  <summary id="historySummary">📜 历史记录</summary>
-  <div id="historyList"></div>
-</details>
+<button class="genbtn np" id="genbtn" onclick="doGen()">✍ 生成手写文字</button>
+
+<div class="result" id="result">
+<div class="paper"><div class="hand" id="hand"></div></div>
+<div class="tbar np">
+<button onclick="window.print()">🖨 打印</button>
+<button onclick="copyText()">📋 复制</button>
+</div>
+</div>
 
 </div>
 <div class="toast" id="toast"></div>
 
 <script>
-// ─── State ──────────────────────────────────────────────────
-const state = {
-  scene: 'auto',
-  style: 'formal',
-  history: JSON.parse(localStorage.getItem('wf_history') || '[]'),
-  lastResult: null,
-  recognition: null,
-  isRecording: false,
-  finalTranscript: '',
-  interimTranscript: '',
-  currentLang: 'unknown',
-};
-const SCENE_NAMES = { auto:'自动', leave:'请假条', resign:'辞职信', love:'情书/卡片', notice:'通知', apology:'道歉信', note:'笔记整理' };
-const STYLE_NAMES = { formal:'正式', warm:'亲切', classic:'古风', short:'简短' };
-const LANG_NAMES = { 'cmn-Hans-CN':'中文', 'zh-CN':'中文', 'zh':'中文', 'en-US':'English', 'en':'English', 'ja-JP':'日本語', 'ko-KR':'한국어' };
+var scene='auto', style='formal';
+var recog=null, listening=false;
 
-// ─── Voice Recognition ───────────────────────────────────────
-// State machine: 'idle' -> 'starting' -> 'listening' -> 'stopping' -> 'idle'
-let voicePhase = 'idle';  // idle | starting | listening | stopping
-let voiceForceTimer = null;
-
-function initSpeech() {
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) {
-    const btn = document.getElementById('voiceBtn');
-    if (btn) { btn.disabled = true; btn.textContent = '❌ 不支持'; }
-    return false;
-  }
-
-  const r = new SR();
-  r.continuous = true;
-  r.interimResults = true;
-  r.lang = 'zh-CN';
-
-  r.onstart = () => {
-    voicePhase = 'listening';
-    state.isRecording = true;
-    state.finalTranscript = '';
-    state.interimTranscript = '';
-    setBtn('recording', '🛑 点击停止');
-    const st = document.getElementById('voiceStatus');
-    if (st) st.textContent = '🎤 录音中… 说话即显示';
+document.addEventListener('DOMContentLoaded',function(){
+  var k=localStorage.getItem('wf_key');
+  if(k) document.getElementById('apikey').value=k;
+  document.getElementById('apikey').onchange=function(){
+    if(this.value) localStorage.setItem('wf_key',this.value);
   };
-
-  r.onresult = (e) => {
-    if (voicePhase !== 'listening') return;
-    let interim = '', final = '';
-    for (let i = e.resultIndex; i < e.results.length; i++) {
-      if (e.results[i].isFinal) final += e.results[i][0].transcript;
-      else interim += e.results[i][0].transcript;
-    }
-    if (final) { state.finalTranscript += final; state.interimTranscript = ''; }
-    if (interim) state.interimTranscript = interim;
-
-    const txt = state.finalTranscript + state.interimTranscript;
-    const inp = document.getElementById('input');
-    if (inp) {
-      inp.value = txt;
-      inp.style.height = 'auto';
-      inp.style.height = Math.min(inp.scrollHeight, 160) + 'px';
-      localStorage.setItem('wf_last_input', txt);
-    }
-    if (state.finalTranscript) detectLanguage(state.finalTranscript);
-    updateTranscript(state.finalTranscript + state.interimTranscript, !!state.interimTranscript);
-  };
-
-  r.onerror = (e) => {
-    if (e.error === 'aborted') {
-      // We triggered stop/abort — do nothing, onend will handle it
-      return;
-    }
-    const st = document.getElementById('voiceStatus');
-    if (!st) return;
-    if (e.error === 'not-allowed' || e.error === 'permission-denied') {
-      st.textContent = '❌ 麦克风权限被拒绝';
-    } else if (e.error === 'no-speech') {
-      st.textContent = '没有检测到语音';
-    } else {
-      st.textContent = '⚠ ' + e.error;
-    }
-    voicePhase = 'idle';
-    state.isRecording = false;
-    setBtn('default', '🎤 语音输入');
-  };
-
-  r.onend = () => {
-    // If user requested stop, or we aborted — do NOT restart
-    if (voicePhase === 'stopping') {
-      voicePhase = 'idle';
-      state.isRecording = false;
-      setBtn('default', '🎤 语音输入');
-      showVoiceReady();
-      return;
-    }
-    // If still supposed to be listening, restart (browser may have paused)
-    if (voicePhase === 'listening') {
-      try { r.start(); } catch(e) {}
-      return;
-    }
-    // Fallback: reset
-    voicePhase = 'idle';
-    state.isRecording = false;
-    setBtn('default', '🎤 语音输入');
-    showVoiceReady();
-  };
-
-  state.recognition = r;
-  return true;
-}
-
-function detectLanguage(text) {
-  const cleaned = text.trim();
-  if (!cleaned) return;
-  const cnChars = (cleaned.match(/[\u4e00-\u9fff\u3400-\u4dbf]/g) || []).length;
-  const enChars = (cleaned.match(/[a-zA-Z]/g) || []).length;
-  const total = cnChars + enChars;
-  if (total === 0) return;
-  const cnRatio = cnChars / total;
-  let detected;
-  if (cnRatio > 0.3) detected = 'zh-CN';
-  else if (enChars > 0) detected = 'en-US';
-  else detected = 'unknown';
-  if (detected !== state.currentLang) {
-    state.currentLang = detected;
-    updateLangIndicator(detected);
-  }
-}
-
-function updateLangIndicator(lang) {
-  const dot = document.getElementById('langDot');
-  const label = document.getElementById('langLabel');
-  if (!dot || !label) return;
-  dot.className = 'dot';
-  if (lang === 'zh-CN') { dot.classList.add('cn'); label.textContent = '中文'; }
-  else if (lang === 'en-US') { dot.classList.add('en'); label.textContent = 'English'; }
-  else { dot.classList.add('idle'); label.textContent = '检测中...'; }
-}
-
-function setBtn(mode, label) {
-  const btn = document.getElementById('voiceBtn');
-  if (!btn) return;
-  btn.classList.toggle('recording', mode === 'recording');
-  btn.disabled = (mode === 'disabled');
-  btn.innerHTML = '<span>' + (mode === 'recording' ? '🛑' : '🎤') + '</span> <span>' + label + '</span>';
-}
-
-function toggleVoice() {
-  if (voicePhase === 'listening') stopRecording();
-  else startRecording();
-}
-
-function startRecording() {
-  if (voicePhase === 'listening' || voicePhase === 'starting' || voicePhase === 'stopping') return;
-  if (!state.recognition && !initSpeech()) {
-    showToast('⚠ 浏览器不支持语音识别');
-    return;
-  }
-
-  voicePhase = 'starting';
-  setBtn('disabled', '⏳ 请求麦克风…');
-  document.getElementById('voiceStatus').textContent = '⏳ 请求麦克风权限…';
-
-  state.finalTranscript = '';
-  state.interimTranscript = '';
-  state.currentLang = 'unknown';
-  clearTranscript();
-
-  navigator.mediaDevices?.getUserMedia?.({ audio: true })
-    .then(() => {
-      const go = () => {
-        try {
-          state.recognition.start();
-        } catch(e) {
-          if (e.name === 'InvalidStateError') {
-            try { state.recognition.stop(); } catch(e2) {}
-            setTimeout(go, 300);
-          } else {
-            showToast('❌ 启动失败');
-            voicePhase = 'idle';
-            setBtn('default', '🎤 语音输入');
-          }
-        }
-      };
-      go();
-    })
-    .catch(() => {
-      voicePhase = 'idle';
-      setBtn('default', '🎤 语音输入');
-      showToast('❌ 请允许使用麦克风');
-    });
-}
-
-function stopRecording() {
-  if (voicePhase !== 'listening') return;
-
-  voicePhase = 'stopping';
-  state.isRecording = false;
-  setBtn('disabled', '⏹ 正在停止…');
-
-  // Force abort (more reliable than stop() on some browsers)
-  if (state.recognition) {
-    try { state.recognition.abort(); } catch(e) {}
-    try { state.recognition.stop(); } catch(e) {}
-  }
-
-  // Safety timeout: if onend hasn't fired in 2s, force reset
-  if (voiceForceTimer) clearTimeout(voiceForceTimer);
-  voiceForceTimer = setTimeout(() => {
-    if (voicePhase === 'stopping') {
-      voicePhase = 'idle';
-      state.isRecording = false;
-      setBtn('default', '🎤 语音输入');
-      showVoiceReady();
-    }
-  }, 1500);
-}
-
-function showVoiceReady() {
-  const status = document.getElementById('voiceStatus');
-  if (state.finalTranscript) {
-    const langLabel = state.currentLang === 'en-US' ? 'English' : '中文';
-    status.innerHTML = `✅ 已识别 ${langLabel}，${state.finalTranscript.length} 字 · <span style="color:var(--accent);cursor:pointer" onclick="generate()">立即生成</span>`;
-  } else {
-    status.innerHTML = '<span class="lang-indicator"><span class="dot idle"></span>点击🎤开始说话</span>';
-  }
-}
-
-function updateTranscript(text, isInterim) {
-  const box = document.getElementById('transcriptBox');
-  const textEl = document.getElementById('transcriptText');
-  const langEl = document.getElementById('transcriptLang');
-
-  if (text.trim()) {
-    box.classList.add('show');
-    if (isInterim) {
-      // Show interim text with a subtle cursor blink effect
-      textEl.innerHTML = text + '<span style="opacity:0.4;animation:blink 0.6s infinite">|</span>';
-    } else {
-      textEl.textContent = text;
-    }
-    langEl.textContent = state.currentLang === 'en-US' ? 'English' : '中文';
-  } else {
-    box.classList.remove('show');
-    textEl.textContent = '';
-  }
-}
-
-function clearTranscript() {
-  document.getElementById('transcriptBox').classList.remove('show');
-  document.getElementById('transcriptText').textContent = '';
-}
-
-// ─── Init ────────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', () => {
-  const saved = localStorage.getItem('wf_apikey');
-  if (saved) document.getElementById('apikey').value = saved;
-
-  // Auto-restore last input
-  const last = localStorage.getItem('wf_last_input');
-  if (last) { document.getElementById('input').value = last; }
-
-  // Save input on change
-  document.getElementById('input').addEventListener('input', () => {
-    localStorage.setItem('wf_last_input', document.getElementById('input').value);
+  document.querySelectorAll('#scenes .pill').forEach(function(el){
+    el.onclick=function(){
+      document.querySelectorAll('#scenes .pill').forEach(function(p){p.classList.remove('on')});
+      this.classList.add('on'); scene=this.dataset.v;
+    };
   });
-
-  // Scene pills
-  document.querySelectorAll('#scenes .pill').forEach(el => {
-    el.addEventListener('click', () => {
-      document.querySelectorAll('#scenes .pill').forEach(p => p.classList.remove('active'));
-      el.classList.add('active');
-      state.scene = el.dataset.scene;
-    });
+  document.querySelectorAll('#styles .pill').forEach(function(el){
+    el.onclick=function(){
+      document.querySelectorAll('#styles .pill').forEach(function(p){p.classList.remove('on')});
+      this.classList.add('on'); style=this.dataset.v;
+    };
   });
-
-  // Style pills
-  document.querySelectorAll('#styles .pill').forEach(el => {
-    el.addEventListener('click', () => {
-      document.querySelectorAll('#styles .pill').forEach(p => p.classList.remove('active'));
-      el.classList.add('active');
-      state.style = el.dataset.style;
-    });
-  });
-
-  renderHistory();
-  initSpeech();
-
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js').catch(() => {});
-  }
+  document.getElementById('vbtn').onclick=toggleVoice;
 });
 
-// ─── API Key ────────────────────────────────────────────────
-function saveKey() {
-  const key = document.getElementById('apikey').value.trim();
-  if (key) localStorage.setItem('wf_apikey', key);
+function toast(msg){
+  var t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('on');
+  clearTimeout(t._t);
+  t._t=setTimeout(function(){t.classList.remove('on')},2500);
 }
 
-// ─── Generate ────────────────────────────────────────────────
-async function generate() {
-  const input = document.getElementById('input').value.trim();
-  if (!input) { showToast('请先描述你要写的内容（打字或语音）'); return; }
+function toggleVoice(){
+  if(listening) stopVoice();
+  else startVoice();
+}
 
-  const apiKey = document.getElementById('apikey').value.trim();
-  if (!apiKey) { showToast('请填写 OpenAi API Key'); return; }
-  saveKey();
-
-  // Stop voice if recording
-  if (voicePhase === 'listening') stopRecording();
-
-  const btn = document.getElementById('genBtn');
-  btn.disabled = true; btn.classList.add('loading');
-  btn.innerHTML = '⏳ 正在生成…';
-
-  try {
-    // Detect the language of the input to respond accordingly
-    const cnChars = (input.match(/[\u4e00-\u9fff\u3400-\u4dbf]/g) || []).length;
-    const enChars = (input.match(/[a-zA-Z]/g) || []).length;
-    const isChinese = cnChars >= enChars;
-
-    const outputLang = isChinese ? '中文' : state.currentLang === 'en-US' ? 'English' : '中文';
-    const instructionLang = isChinese ?
-      '生成中文书面文字。包含标题、称呼、正文、落款。日期用X月X日，签名用______。每段空一行。' :
-      'Generate formal written text in English. Include title, salutation, body, closing. Use "X/X/XXXX" for dates and "______" for signatures.';
-
-    const systemPrompt = `You are a professional written text generator. Users describe what they need to write, and you generate polished text ready for handwriting or printing.
-
-Current scenario: ${SCENE_NAMES[state.scene]}
-Output style: ${STYLE_NAMES[state.style]}
-Output language: ${outputLang}
-
-Requirements:
-1. Output format: ${instructionLang}
-2. Do NOT include explanations or markdown formatting
-3. Output ONLY the text itself
-4. If a title fits, include it centered`;
-
-    const userPrompt = `User request: ${input}`;
-
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt },
-        ],
-        temperature: 0.5,
-        max_tokens: 2000,
-      }),
-    });
-
-    if (!res.ok) throw new Error((await res.text()).slice(0, 200));
-
-    const data = await res.json();
-    const text = data.choices?.[0]?.message?.content || '';
-
-    state.lastResult = { input, scene: state.scene, style: state.style, text, time: Date.now() };
-    showResult(text);
-
-    state.history.unshift({ input: input.slice(0, 60), scene: state.scene, style: state.style, text: text.slice(0, 60), time: Date.now() });
-    if (state.history.length > 20) state.history.length = 20;
-    localStorage.setItem('wf_history', JSON.stringify(state.history));
-    renderHistory();
-
-  } catch (e) {
-    showToast('❌ ' + e.message);
-  } finally {
-    btn.disabled = false; btn.classList.remove('loading');
-    btn.innerHTML = '✍ 生成手写文字';
+function startVoice(){
+  if(listening) return;
+  var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){toast('⚠ 浏览器不支持语音'); return;}
+  var st=document.getElementById('vstatus');
+  var btn=document.getElementById('vbtn');
+  st.textContent='⏳ 请求麦克风…';
+  btn.disabled=true;
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
+    st.textContent='❌ 不支持'; btn.disabled=false; return;
   }
+  navigator.mediaDevices.getUserMedia({audio:true})
+  .then(function(stream){
+    stream.getTracks().forEach(function(t){t.stop()});
+    var r=new SR();
+    r.continuous=true; r.interimResults=true; r.lang='zh-CN';
+    r.onstart=function(){
+      listening=true;
+      btn.classList.add('rec'); btn.innerHTML='🛑 停止';
+      st.textContent='🎤 说话中…';
+    };
+    r.onresult=function(e){
+      var inp=document.getElementById('input');
+      var final='', interim='';
+      for(var i=e.resultIndex;i<e.results.length;i++){
+        if(e.results[i].isFinal) final+=e.results[i][0].transcript;
+        else interim+=e.results[i][0].transcript;
+      }
+      if(final){
+        inp.value+=final;
+        inp.style.height='auto'; inp.style.height=Math.min(inp.scrollHeight,160)+'px';
+        inp.placeholder='';
+      }else if(interim){
+        inp.placeholder=interim;
+      }
+    };
+    r.onerror=function(e){
+      if(e.error==='aborted'||e.error==='no-speech') return;
+      st.textContent='⚠ '+e.error;
+      listening=false; btn.classList.remove('rec');
+      btn.innerHTML='🎤 语音输入'; btn.disabled=false;
+    };
+    r.onend=function(){
+      if(listening){try{r.start()}catch(e2){}}
+      else{
+        btn.classList.remove('rec'); btn.innerHTML='🎤 语音输入';
+        btn.disabled=false;
+        st.textContent=document.getElementById('input').value?'✅ 已识别':'点击🎤开始';
+      }
+    };
+    recog=r;
+    try{r.start()}catch(e){st.textContent='❌ 启动失败';btn.disabled=false;}
+  })
+  .catch(function(){st.textContent='❌ 麦克风被拒';btn.disabled=false;});
 }
 
-// ─── Result Display ─────────────────────────────────────────
-function showResult(text) {
-  const card = document.getElementById('resultCard');
-  const el = document.getElementById('handwriting');
-  el.textContent = text;
-  const lines = text.trim().split('\n');
-  if (lines.length > 0 && lines[0].length < 30) {
-    el.innerHTML = '<div style="text-align:center;font-size:22px;font-weight:bold;margin-bottom:8px">' + lines[0].replace(/^#\s*/, '') + '</div>' + lines.slice(1).join('\n');
+function stopVoice(){
+  listening=false;
+  if(recog){
+    try{recog.abort()}catch(e){}
+    try{recog.stop()}catch(e){}
   }
-  card.classList.add('show');
-  setTimeout(() => card.scrollIntoView({ behavior: 'smooth', block: 'start' }), 200);
+  setTimeout(function(){
+    var btn=document.getElementById('vbtn');
+    btn.classList.remove('rec'); btn.innerHTML='🎤 语音输入'; btn.disabled=false;
+    document.getElementById('vstatus').textContent=document.getElementById('input').value?'✅ 已识别':'点击🎤开始';
+  },800);
 }
 
-function printResult() { window.print(); }
+function doGen(){
+  var inp=document.getElementById('input').value.trim();
+  if(!inp){toast('请描述内容'); return;}
+  var key=document.getElementById('apikey').value.trim();
+  if(!key){toast('请填 OpenAI Key'); return;}
+  if(listening) stopVoice();
+  var btn=document.getElementById('genbtn');
+  btn.disabled=true; btn.textContent='⏳ 生成中…';
+  var sn={auto:'自动',leave:'请假条',love:'情书',notice:'通知',note:'笔记'};
+  var sy={formal:'正式',warm:'亲切',classic:'古风'};
+  var sys='你是书面文字生成助手。只输出可直接手写的文字。场景:'+(sn[scene]||'')+' 语气:'+(sy[style]||'')+'。保留空白用______，日期用X月X日。';
+  fetch('https://api.openai.com/v1/chat/completions',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
+    body:JSON.stringify({model:'gpt-4o-mini',messages:[{role:'system',content:sys},{role:'user',content:inp}],temperature:0.5,max_tokens:2000}),
+  })
+  .then(function(r){
+    if(!r.ok) return r.text().then(function(t){throw new Error(t.slice(0,200))});
+    return r.json();
+  })
+  .then(function(d){
+    var t=d.choices?.[0]?.message?.content||'';
+    document.getElementById('hand').innerHTML=t.replace(/\n/g,'<br>');
+    document.getElementById('result').classList.add('show');
+  })
+  .catch(function(e){toast('❌ '+e.message)})
+  .finally(function(){btn.disabled=false;btn.textContent='✍ 生成手写文字'});
+}
 
-function copyResult() {
-  if (!state.lastResult) return;
-  navigator.clipboard.writeText(state.lastResult.text).then(() => showToast('✅ 已复制')).catch(() => {
-    const ta = document.createElement('textarea');
-    ta.value = state.lastResult.text;
+function copyText(){
+  var t=document.getElementById('hand').textContent||document.getElementById('hand').innerText;
+  if(!t) return;
+  if(navigator.clipboard)navigator.clipboard.writeText(t).then(function(){toast('✅ 已复制')});
+  else{
+    var ta=document.createElement('textarea'); ta.value=t;
     document.body.appendChild(ta); ta.select();
-    document.execCommand('copy');
-    document.body.removeChild(ta);
-    showToast('✅ 已复制');
-  });
-}
-
-function saveResult() {
-  if (!state.lastResult) return;
-  const blob = new Blob([state.lastResult.text], { type: 'text/plain' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `writeforme_${new Date().toISOString().slice(0,10)}.txt`;
-  a.click();
-  URL.revokeObjectURL(url);
-  showToast('✅ 已保存');
-}
-
-function regenerate() { generate(); }
-
-// ─── History ────────────────────────────────────────────────
-function renderHistory() {
-  const el = document.getElementById('historyList');
-  document.getElementById('historySummary').textContent = `📜 历史记录 (${state.history.length})`;
-  if (state.history.length === 0) {
-    el.innerHTML = '<div style="padding:12px;color:var(--text-light);font-size:13px">暂无记录</div>';
-    return;
+    document.execCommand('copy'); document.body.removeChild(ta);
+    toast('✅ 已复制');
   }
-  el.innerHTML = state.history.map((h, i) => `
-    <div class="history-item" onclick="restoreHistory(${i})">
-      <div>
-        <div class="h-scene">${SCENE_NAMES[h.scene] || h.scene} · ${STYLE_NAMES[h.style] || h.style}</div>
-        <div class="h-preview">${h.input.slice(0, 30)}</div>
-      </div>
-      <div style="font-size:11px;color:var(--text-light)">${new Date(h.time).toLocaleDateString()}</div>
-    </div>
-  `).join('');
-}
-
-function restoreHistory(idx) {
-  const h = state.history[idx];
-  if (!h) return;
-  document.getElementById('input').value = h.input;
-  localStorage.setItem('wf_last_input', h.input);
-  document.querySelectorAll('#scenes .pill').forEach(p => p.classList.remove('active'));
-  const sEl = document.querySelector(`#scenes .pill[data-scene="${h.scene}"]`);
-  if (sEl) { sEl.classList.add('active'); state.scene = h.scene; }
-  document.querySelectorAll('#styles .pill').forEach(p => p.classList.remove('active'));
-  const stEl = document.querySelector(`#styles .pill[data-style="${h.style}"]`);
-  if (stEl) { stEl.classList.add('active'); state.style = h.style; }
-  if (h.text) showResult(h.text);
-  state.lastResult = h;
-}
-
-// ─── Toast ──────────────────────────────────────────────────
-function showToast(msg) {
-  const el = document.getElementById('toast');
-  el.textContent = msg; el.classList.add('show');
-  clearTimeout(el._timer);
-  el._timer = setTimeout(() => el.classList.remove('show'), 2500);
 }
 </script>
 </body>
