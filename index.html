@@ -322,81 +322,62 @@ const LANG_NAMES = { 'cmn-Hans-CN':'中文', 'zh-CN':'中文', 'zh':'中文', 'e
 
 // ─── Voice Recognition ───────────────────────────────────────
 function initSpeech() {
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SpeechRecognition) {
-    document.getElementById('voiceBtn').disabled = true;
-    document.getElementById('voiceStatus').textContent = '❌ 浏览器不支持语音识别';
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) {
+    const btn = document.getElementById('voiceBtn');
+    if (btn) { btn.disabled = true; btn.textContent = '❌ 不支持'; }
     return false;
   }
 
-  const recognition = new SpeechRecognition();
-  recognition.continuous = true;
-  recognition.interimResults = true;
-  // Set broad language for auto-detection — the API picks the closest match
-  recognition.lang = 'zh-CN,en-US';  // Browser auto-detects or uses primary
+  const r = new SR();
+  r.continuous = true;
+  r.interimResults = true;
+  r.lang = 'zh-CN';
 
-  recognition.onstart = () => {
+  r.onstart = () => {
     state.isRecording = true;
     state.finalTranscript = '';
+    const btn = document.getElementById('voiceBtn');
+    if (btn) { btn.classList.add('recording'); btn.innerHTML = '<span>🔴</span> <span>点击停止</span>'; }
+    const st = document.getElementById('voiceStatus');
+    if (st) st.textContent = '🎤 录音中…';
   };
 
-  recognition.onresult = (event) => {
-    let interim = '';
-    let final = '';
-
-    for (let i = event.resultIndex; i < event.results.length; i++) {
-      const result = event.results[i];
-      if (result.isFinal) {
-        final += result[0].transcript;
-      } else {
-        interim += result[0].transcript;
-      }
+  r.onresult = (e) => {
+    let interim = '', final = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      if (e.results[i].isFinal) final += e.results[i][0].transcript;
+      else interim += e.results[i][0].transcript;
     }
-
     if (final) {
       state.finalTranscript += final;
-      // Auto-detect language from the transcript
       detectLanguage(state.finalTranscript);
-      document.getElementById('input').value = state.finalTranscript;
+      const inp = document.getElementById('input');
+      if (inp) {
+        inp.value = state.finalTranscript;
+        inp.style.height = 'auto';
+        inp.style.height = Math.min(inp.scrollHeight, 160) + 'px';
+        localStorage.setItem('wf_last_input', state.finalTranscript);
+      }
     }
-
-    // Show interim in transcript box
-    const displayText = state.finalTranscript + (interim ? '...' : '');
-    updateTranscript(displayText, interim.length > 0);
-
-    // Auto-adjust textarea height
-    const ta = document.getElementById('input');
-    ta.style.height = 'auto';
-    ta.style.height = Math.min(ta.scrollHeight, 160) + 'px';
+    updateTranscript(state.finalTranscript + (interim ? '…' : ''), !!interim);
   };
 
-  recognition.onerror = (event) => {
-    console.error('Speech error:', event.error);
-    stopRecording();
-    const status = document.getElementById('voiceStatus');
-    if (event.error === 'no-speech') {
-      status.textContent = '没有检测到语音，点击重新开始';
-    } else if (event.error === 'audio-capture') {
-      status.textContent = '❌ 无法访问麦克风，请授予权限';
-    } else if (event.error === 'not-allowed') {
-      status.textContent = '❌ 麦克风权限被拒绝';
-    } else if (event.error === 'language-not-supported') {
-      status.textContent = '⚠ 语言不支持，试试中文或英文';
-    } else {
-      status.textContent = '⚠ 语音识别错误: ' + event.error;
-    }
+  r.onerror = (e) => {
+    const st = document.getElementById('voiceStatus');
+    if (!st) return;
+    if (e.error === 'not-allowed' || e.error === 'permission-denied') { st.textContent = '❌ 麦克风权限被拒绝'; showToast('请允许麦克风权限后重试'); }
+    else if (e.error === 'no-speech') st.textContent = '没有检测到语音';
+    else if (e.error === 'aborted') { /* user stopped, ignore */ }
+    else st.textContent = '⚠ ' + e.error;
   };
 
-  recognition.onend = () => {
-    // Auto-restart if still recording (handles silent pauses)
-    if (state.isRecording) {
-      try { recognition.start(); } catch(e) {}
-    } else {
-      updateVoiceUI(false);
-    }
+  r.onend = () => {
+    if (state.isRecording) { try { r.start(); } catch(e) {} }
+    else updateVoiceUI(false);
   };
 
-  state.recognition = recognition;
+  state.recognition = r;
   return true;
 }
 
@@ -462,65 +443,70 @@ function clearTranscript() {
 
 // ─── Voice Toggle ────────────────────────────────────────────
 function toggleVoice() {
-  if (state.isRecording) {
-    stopRecording();
-  } else {
-    startRecording();
-  }
+  if (state.isRecording) { stopRecording(); }
+  else { startRecording(); }
 }
 
 function startRecording() {
-  if (!state.recognition && !initSpeech()) return;
-  if (!state.recognition) return;
+  if (state.isRecording) return;
+  if (!state.recognition && !initSpeech()) {
+    showToast('⚠ 浏览器不支持语音识别');
+    return;
+  }
 
-  // Request mic permission early
-  navigator.mediaDevices?.getUserMedia?.({ audio: true }).then(() => {
-    state.isRecording = true;
-    state.finalTranscript = '';
-    state.currentLang = 'unknown';
+  const btn = document.getElementById('voiceBtn');
+  const status = document.getElementById('voiceStatus');
+  btn.disabled = true;
+  status.textContent = '⏳ 请求麦克风…';
 
-    const btn = document.getElementById('voiceBtn');
-    btn.classList.add('recording');
-    document.getElementById('voiceIcon').textContent = '🔴';
-    document.getElementById('voiceLabel').textContent = '停止录音';
+  state.finalTranscript = '';
+  state.currentLang = 'unknown';
+  clearTranscript();
 
-    const status = document.getElementById('voiceStatus');
-    status.innerHTML = '🎤 录音中… 说话后自动识别语言';
-
-    clearTranscript();
-
-    // For language auto-detection, restart with appropriate primary lang
-    // but we keep broad for auto-detection
+  const tryStart = () => {
     try {
       state.recognition.start();
+      // success is handled by onstart event
     } catch(e) {
-      // May already be running
+      if (e.name === 'InvalidStateError') {
+        try { state.recognition.stop(); } catch(e2) {}
+        setTimeout(tryStart, 300);
+      } else {
+        showToast('❌ 语音启动失败');
+        status.textContent = '点击🎤重试';
+        btn.disabled = false;
+      }
     }
-  }).catch(() => {
-    showToast('❌ 需要麦克风权限才能使用语音输入');
-  });
+  };
+
+  navigator.mediaDevices?.getUserMedia?.({ audio: true })
+    .then(() => { tryStart(); })
+    .catch(() => {
+      status.textContent = '点击🎤开始';
+      btn.disabled = false;
+      showToast('❌ 请允许使用麦克风');
+    });
 }
 
 function stopRecording() {
   state.isRecording = false;
-  updateVoiceUI(false);
-
   if (state.recognition) {
     try { state.recognition.stop(); } catch(e) {}
   }
+  updateVoiceUI(false);
 }
 
 function updateVoiceUI(isRecording) {
   const btn = document.getElementById('voiceBtn');
   btn.classList.remove('recording');
-  document.getElementById('voiceIcon').textContent = '🎤';
-  document.getElementById('voiceLabel').textContent = '语音输入';
+  btn.disabled = false;
+  btn.innerHTML = '<span>🎤</span> <span>语音输入</span>';
 
   if (!isRecording) {
     const status = document.getElementById('voiceStatus');
     if (state.finalTranscript) {
-      status.innerHTML = `✅ 已识别 ${state.currentLang === 'en-US' ? 'English' : '中文'}，${state.finalTranscript.length} 字`;
-      status.innerHTML += ' · <span style="color:var(--accent);cursor:pointer" onclick="generate()">立即生成</span>';
+      const langLabel = state.currentLang === 'en-US' ? 'English' : '中文';
+      status.innerHTML = `✅ 已识别 ${langLabel}，${state.finalTranscript.length} 字 · <span style="color:var(--accent);cursor:pointer" onclick="generate()">立即生成</span>`;
     } else {
       status.innerHTML = '<span class="lang-indicator"><span class="dot idle"></span>点击🎤开始说话</span>';
     }
