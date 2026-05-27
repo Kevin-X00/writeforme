@@ -1,0 +1,15 @@
+{
+  "name": "writeforme",
+  "version": "1.0.0",
+  "description": "你描述，我写 — 自然语言转手写文字。手机/PC浏览器即开即用。",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "npx serve .",
+    "test": "node --test"
+  },
+  "keywords": ["writeforme", "handwriting", "ai", "llm", "natural-language", "pwa"],
+  "author": "Kevin-X00",
+  "license": "MIT",
+  "repository": { "type": "git", "url": "git+https://github.com/Kevin-X00/writeforme.git" }
+}
